@@ -22,7 +22,7 @@ HTML_TEMPLATE = """
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>SQLgard - O Despertar do Kernel</title>
+    <title>Arena do Kernel Ancestral</title>
     <style>
         body { font-family: sans-serif; background-color: #1e1e1e; color: #fff; text-align: center; padding: 50px; }
         table { margin: 0 auto; border-collapse: collapse; width: 60%; background-color: #2d2d2d; box-shadow: 0 4px 8px rgba(0,0,0,0.5); }
