@@ -1,16 +1,17 @@
 import os
 import oracledb
-import json
 from flask import Flask, render_template_string, redirect, url_for
 
 app = Flask(__name__)
 
-# Lógica de conexão com o banco
+# Lógica de conexão com o banco (SEGURA - Usando Vercel Environment Variables)
 def get_db_connection():
     try:
-        with open("secret.txt", "r", encoding="utf-8") as f:
-            creds = json.load(f)
-        return oracledb.connect(user=creds["user"], password=creds["password"], dsn=creds["dsn"])
+        return oracledb.connect(
+            user=os.environ.get("DB_USER"),
+            password=os.environ.get("DB_PASSWORD"),
+            dsn=os.environ.get("DB_DSN")
+        )
     except Exception as e:
         print(f"Erro na conexão: {e}")
         return None
@@ -74,7 +75,7 @@ HTML_TEMPLATE = """
 def index():
     conn = get_db_connection()
     if not conn:
-        return "<h1>Erro de conexão!</h1><p>Verifique as variáveis de ambiente (DB_USER, DB_PASSWORD, DB_DSN).</p>"
+        return "<h1>Erro de conexão!</h1><p>Verifique as variáveis de ambiente (DB_USER, DB_PASSWORD, DB_DSN) na Vercel.</p>"
     
     cursor = conn.cursor()
     cursor.execute("SELECT id_heroi, nome, classe, hp_atual, hp_max, status FROM TB_HEROIS ORDER BY id_heroi")
@@ -85,14 +86,12 @@ def index():
     
     return render_template_string(HTML_TEMPLATE, herois=herois)
 
-# Rota 1: Processar o turno (A Lógica exigida em PL/SQL)
+# Rota 1: Processar o turno
 @app.route('/processar', methods=['POST'])
 def processar_turno():
     conn = get_db_connection()
     if conn:
         cursor = conn.cursor()
-        
-        # O Bloco PL/SQL processado no Oracle
         plsql_block = """
         DECLARE
             v_dano_nevoa NUMBER := 15;
@@ -100,7 +99,6 @@ def processar_turno():
         BEGIN
             FOR r_heroi IN (SELECT id_heroi, hp_atual FROM TB_HEROIS WHERE status = 'ATIVO') LOOP
                 v_novo_hp := r_heroi.hp_atual - v_dano_nevoa;
-                
                 IF v_novo_hp <= 0 THEN
                     UPDATE TB_HEROIS SET hp_atual = 0, status = 'CAÍDO' WHERE id_heroi = r_heroi.id_heroi;
                 ELSE
@@ -122,17 +120,13 @@ def resetar_herois():
     conn = get_db_connection()
     if conn:
         cursor = conn.cursor()
-        
-        # Cura todo mundo e volta o status para ATIVO
         comando_sql = "UPDATE TB_HEROIS SET hp_atual = hp_max, status = 'ATIVO'"
         cursor.execute(comando_sql)
         conn.commit() 
-        
         cursor.close()
         conn.close()
         
     return redirect(url_for('index'))
 
 if __name__ == '__main__':
-    # use_reloader=False evita aquele erro SystemExit caso você ainda rode por Notebook/Células no VS Code
     app.run(debug=True, use_reloader=False)
