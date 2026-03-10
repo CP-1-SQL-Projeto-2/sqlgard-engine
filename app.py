@@ -15,7 +15,7 @@ def get_db_connection():
         print(f"Erro na conexão: {e}")
         return None
 
-# Frontend
+# Template HTML com a interface do jogo e os dois botões
 HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html>
@@ -27,14 +27,22 @@ HTML_TEMPLATE = """
         table { margin: 0 auto; border-collapse: collapse; width: 60%; background-color: #2d2d2d; box-shadow: 0 4px 8px rgba(0,0,0,0.5); }
         th, td { padding: 15px; border: 1px solid #444; }
         th { background-color: #333; }
-        .btn { background-color: #8b0000; color: white; padding: 15px 30px; text-decoration: none; font-size: 18px; border-radius: 5px; border: none; cursor: pointer; display: inline-block; margin-top: 20px; transition: 0.3s;}
-        .btn:hover { background-color: #ff0000; transform: scale(1.05); }
+        
+        /* Estilos dos Botões */
+        .btn { padding: 15px 30px; text-decoration: none; font-size: 18px; border-radius: 5px; border: none; cursor: pointer; transition: 0.3s; font-weight: bold; }
+        .btn-dano { background-color: #8b0000; color: white; }
+        .btn-dano:hover { background-color: #ff0000; transform: scale(1.05); }
+        .btn-cura { background-color: #228B22; color: white; }
+        .btn-cura:hover { background-color: #32CD32; transform: scale(1.05); }
+        
+        /* Estilos de Status */
         .caido { color: #ff4c4c; font-weight: bold; }
         .ativo { color: #4cff4c; font-weight: bold; }
     </style>
 </head>
 <body>
     <h1>🛡️ Status dos Heróis em SQLgard</h1>
+    
     <table>
         <tr><th>ID</th><th>Nome</th><th>Classe</th><th>HP</th><th>Status</th></tr>
         {% for heroi in herois %}
@@ -47,19 +55,26 @@ HTML_TEMPLATE = """
         </tr>
         {% endfor %}
     </table>
-    <form action="/processar" method="POST">
-        <button type="submit" class="btn">Processar Próximo Turno da Névoa ☠️</button>
-    </form>
+    
+    <div style="margin-top: 30px;">
+        <form action="/processar" method="POST" style="display: inline-block; margin-right: 15px;">
+            <button type="submit" class="btn btn-dano">Processar Próximo Turno da Névoa ☠️</button>
+        </form>
+        
+        <form action="/resetar" method="POST" style="display: inline-block;">
+            <button type="submit" class="btn btn-cura">Restaurar Heróis ♻️</button>
+        </form>
+    </div>
 </body>
 </html>
 """
 
-# Rota principal
+# Rota principal: Exibe a tabela
 @app.route('/')
 def index():
     conn = get_db_connection()
     if not conn:
-        return "<h1>Erro de conexão!</h1><p>Verifique as variáveis de ambiente (DB_USER, DB_PASSWORD, DB_DSN) no Vercel.</p>"
+        return "<h1>Erro de conexão!</h1><p>Verifique as variáveis de ambiente (DB_USER, DB_PASSWORD, DB_DSN).</p>"
     
     cursor = conn.cursor()
     cursor.execute("SELECT id_heroi, nome, classe, hp_atual, hp_max, status FROM TB_HEROIS ORDER BY id_heroi")
@@ -70,13 +85,14 @@ def index():
     
     return render_template_string(HTML_TEMPLATE, herois=herois)
 
-# Rota de processamento
+# Rota 1: Processar o turno (A Lógica exigida em PL/SQL)
 @app.route('/processar', methods=['POST'])
 def processar_turno():
     conn = get_db_connection()
     if conn:
         cursor = conn.cursor()
         
+        # O Bloco PL/SQL processado no Oracle
         plsql_block = """
         DECLARE
             v_dano_nevoa NUMBER := 15;
@@ -100,5 +116,23 @@ def processar_turno():
         
     return redirect(url_for('index'))
 
+# Rota 2: Resetar os heróis (Respawn)
+@app.route('/resetar', methods=['POST'])
+def resetar_herois():
+    conn = get_db_connection()
+    if conn:
+        cursor = conn.cursor()
+        
+        # Cura todo mundo e volta o status para ATIVO
+        comando_sql = "UPDATE TB_HEROIS SET hp_atual = hp_max, status = 'ATIVO'"
+        cursor.execute(comando_sql)
+        conn.commit() 
+        
+        cursor.close()
+        conn.close()
+        
+    return redirect(url_for('index'))
+
 if __name__ == '__main__':
-    app.run(debug=True)
+    # use_reloader=False evita aquele erro SystemExit caso você ainda rode por Notebook/Células no VS Code
+    app.run(debug=True, use_reloader=False)
