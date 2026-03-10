@@ -42,7 +42,7 @@ HTML_TEMPLATE = """
     </style>
 </head>
 <body>
-    <h1>🛡️ Status dos Heróis em SQLgard</h1>
+    <h1>🛡️ Arena do Kernel Ancestral</h1>
     
     <table>
         <tr><th>ID</th><th>Nome</th><th>Classe</th><th>HP</th><th>Status</th></tr>
